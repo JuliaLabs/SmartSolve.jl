@@ -1,33 +1,36 @@
-function proposed_fn(a)
-    n = length(a)
-    if n <= 1
-        return a
+function proposed_fn(A, b)
+    m, n = size(A)
+    # Validate right-hand side dimensions
+    if isa(b, AbstractVector)
+        length(b) == m || throw(DimensionMismatch("length(b) != size(A,1)"))
+    elseif isa(b, AbstractMatrix)
+        size(b,1) == m || throw(DimensionMismatch("size(b,1) != size(A,1)"))
+    else
+        throw(ArgumentError("b must be a vector or matrix"))
     end
-    mid = fld(n, 2)
-    left = proposed_fn(view(a, 1:mid))
-    right = proposed_fn(view(a, mid+1:n))
-    out = similar(a)
-    i = 1; j = 1; k = 1
-    llen = length(left); rlen = length(right)
-    while i <= llen && j <= rlen
-        if left[i] <= right[j]
-            out[k] = left[i]
-            i += 1
+
+    if m == n
+        # Square system: LU factorization
+        F = lu(A)  # dense -> DenseLU, sparse -> SparseLU
+        # For sparse factorizations, F \ b is robust and fast; for dense,
+        # use the stored L,U and permutation for an explicit two-stage solve.
+        if !issparse(A) && hasproperty(F, :L) && hasproperty(F, :U) && hasproperty(F, :p)
+            p = F.p
+            if isa(b, AbstractVector)
+                y = F.L \ b[p]
+                x = F.U \ y
+                return x
+            else
+                y = F.L \ b[p, :]
+                x = F.U \ y
+                return x
+            end
         else
-            out[k] = right[j]
-            j += 1
+            return F \ b
         end
-        k += 1
+    else
+        # Rectangular: use QR for least-squares or minimum-norm solution
+        F = qr(A)
+        return F \ b
     end
-    while i <= llen
-        out[k] = left[i]
-        i += 1
-        k += 1
-    end
-    while j <= rlen
-        out[k] = right[j]
-        j += 1
-        k += 1
-    end
-    return out
 end

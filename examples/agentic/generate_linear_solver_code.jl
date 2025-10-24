@@ -8,6 +8,6 @@ function ls_dev_prompt_maker(fn_str)
             # " Do not make the statistics a struct, just a dictionary" *
             " Assume that LinearAlgebra and SparseArrays is already imported."
 end
-function generate_linear_solver_code(prompt, checker_fn_str, secret_key, model = "gpt-5-mini"; max_iters = 3)
-    return generate_default_code(prompt, checker_fn_str, secret_key, model, ls_dev_prompt_maker, max_iters)
+function generate_linear_solver_code(prompt, checker_filename, secret_key, model = "gpt-5-mini"; max_iters = 3)
+    return generate_default_code(prompt, checker_filename, secret_key, model, ls_dev_prompt_maker; max_iters = max_iters)
 end
