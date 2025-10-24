@@ -11,7 +11,7 @@ end
 
 function description_prompt_maker(check, description)
     if check
-        return "Passed."
+        return "Passed." * " Here is the description the checker function returned:\n" * description
     end
     return "I ran the code using a checker function. It failed. I need you to fix it." *
             " Here is the description the checker function returned:\n" * description
@@ -65,8 +65,8 @@ function generate_default_code(prompt, checker_filename, secret_key, model = "gp
             next_prompt = error_prompt_maker(error_msg * "\n" * st)
             push!(chat_history, Dict("role" => "user", "content" => next_prompt))
         end
-        timedout = iters == max_iters
+        converged = ~(iters == max_iters)
     end
     final_code = chat_history[end - 1]["content"]
-    return final_code, chat_history, timedout
+    return final_code, chat_history, converged
 end
