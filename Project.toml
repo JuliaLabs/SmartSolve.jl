@@ -1,4 +1,4 @@
-name = "SmartSolve"
+name = "SmartSolve.jl"
 uuid = "4fbb3a3c-2fa1-4c19-8d57-bae8bc1e16ac"
 authors = ["JuliaLab"]
 version = "0.1.0"
