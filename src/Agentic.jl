@@ -1,5 +1,3 @@
-using OpenAI
-
 function dev_prompt_maker(fn_string) 
     return "You are an expert software developer." * 
             " The user will ask you to generate a function and use the following code the check if your solution is correct." * 
@@ -22,7 +20,7 @@ function error_prompt_maker(err_message)
 end
 
 
-function generate_default_code(prompt, checker_filename, secret_key, model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker; max_iters = 3)
+function generate_default_code(prompt, secret_key, checker_filename, model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker; max_iters = 3)
     """
         - checker_fn: proposed_fn -> check : Bool, performance_description : String
     """
@@ -33,7 +31,7 @@ function generate_default_code(prompt, checker_filename, secret_key, model = "gp
                     Dict("role" => "user", "content"=> prompt),]
     
     # println(gen_code)
-    timedout = false
+    converged = false
     for iters = 1:max_iters
         # generate code and evaluate
         r = create_chat(secret_key,
@@ -57,6 +55,7 @@ function generate_default_code(prompt, checker_filename, secret_key, model = "gp
 
             next_prompt = description_prompt_maker(check, performance_description)
             push!(chat_history, Dict("role" => "user", "content" => next_prompt))
+            converged = ~(iters == max_iters)
             check && break
         catch e
             error_msg = sprint(showerror, e)
@@ -69,4 +68,33 @@ function generate_default_code(prompt, checker_filename, secret_key, model = "gp
     end
     final_code = chat_history[end - 1]["content"]
     return final_code, chat_history, converged
+end
+
+function ls_dev_prompt_maker(fn_str)
+    return "You are a numerical linear algebra expert, and an expert Julia programmer." * 
+            " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
+            " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
+            # " Make sure that the function returns some statistics, so that calling proposed_fn(A, b) returns solution, stats." *
+            # " Do not make the statistics a struct, just a dictionary" *
+            " Assume that LinearAlgebra and SparseArrays is already imported."
+end
+
+function ls_cuda_dev_prompt_maker(fn_str)
+    return "You are a numerical linear algebra expert, and an expert Julia programmer. You are very experienced in GPU programming using CUDA." * 
+            " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
+            " Make sure the code you produce uses CUDA." *
+            " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
+            # " Make sure that the function returns some statistics, so that calling proposed_fn(A, b) returns solution, stats." *
+            # " Do not make the statistics a struct, just a dictionary" *
+            " Assume that LinearAlgebra and SparseArrays is already imported."
+end
+
+src_dir = @__DIR__
+
+function generate_linear_solver_code(prompt, secret_key, checker_filename = src_dir * "/test_performance.jl", model = "gpt-5-mini"; max_iters = 3)
+    return generate_default_code(prompt, secret_key, checker_filename, model, ls_dev_prompt_maker; max_iters = max_iters)
+end
+
+function generate_linear_solver_cuda_code(prompt, secret_key,checker_filename = src_dir *"/test_performance_cuda.jl", model = "gpt-5-mini"; max_iters = 3)
+    return generate_default_code(prompt, secret_key, checker_filename, model, ls_cuda_dev_prompt_maker; max_iters = max_iters)
 end
