@@ -1,8 +1,9 @@
-test_matrix_names = ["Bai/af23560", "Engwirda/airfoil_2d", "vanHeukelum/cage10"]
-test_matrices = matrixdepot.(test_matrix_names)
+# test_matrix_names = ["Bai/af23560", "Engwirda/airfoil_2d", "vanHeukelum/cage10"]
+# test_matrices = matrixdepot.(test_matrix_names)
+test_matrices = []
 push!(test_matrices, sprand(1000, 1000, 0.1))
 push!(test_matrices, sprand(1000, 1000, 0.1))
-# push!(test_matrices, sprand(10000, 10000, 0.1))
+push!(test_matrices, sprand(1000, 1000, 0.1))
 
 base_prompt(rel_errs, speedups) = "Here are the errors compared to built-in linear solver: 
 $(rel_errs)

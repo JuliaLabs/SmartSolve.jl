@@ -19,7 +19,7 @@ function error_prompt_maker(err_message)
     return "Your code gave the following error: " * err_message
 end
 
-
+proposed_fn(x) = x
 function generate_default_code(prompt, secret_key, checker_filename, model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker; max_iters = 3)
     """
         - checker_fn: proposed_fn -> check : Bool, performance_description : String
@@ -30,7 +30,6 @@ function generate_default_code(prompt, secret_key, checker_filename, model = "gp
     chat_history = [Dict("role" => "developer", "content"=> dev_prompt),
                     Dict("role" => "user", "content"=> prompt),]
     
-    # println(gen_code)
     converged = false
     for iters = 1:max_iters
         # generate code and evaluate
@@ -45,12 +44,9 @@ function generate_default_code(prompt, secret_key, checker_filename, model = "gp
         push!(chat_history, Dict("role" => "assistant", "content" => gen_code)) 
         try
             eval(Meta.parse(gen_code))
-            # write("proposed_fn.jl", gen_code)
-            # include("proposed_fn.jl")
             # # check how the code did, if good enough, break
             
             check, performance_description = invokelatest(evaluator, proposed_fn)
-            # println(performance_description)
             check && println("check passed")
 
             next_prompt = description_prompt_maker(check, performance_description)
@@ -74,8 +70,6 @@ function ls_dev_prompt_maker(fn_str)
     return "You are a numerical linear algebra expert, and an expert Julia programmer." * 
             " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
             " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
-            # " Make sure that the function returns some statistics, so that calling proposed_fn(A, b) returns solution, stats." *
-            # " Do not make the statistics a struct, just a dictionary" *
             " Assume that LinearAlgebra and SparseArrays is already imported."
 end
 
@@ -84,8 +78,6 @@ function ls_cuda_dev_prompt_maker(fn_str)
             " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
             " Make sure the code you produce uses CUDA." *
             " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
-            # " Make sure that the function returns some statistics, so that calling proposed_fn(A, b) returns solution, stats." *
-            # " Do not make the statistics a struct, just a dictionary" *
             " Assume that LinearAlgebra and SparseArrays is already imported."
 end
 

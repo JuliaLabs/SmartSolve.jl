@@ -1,6 +1,6 @@
 # using SmartSolve
-include("generate_default_code.jl")
-include("generate_linear_solver_code.jl")
+# include("generate_default_code.jl")
+# include("generate_linear_solver_code.jl")
 # include("test_performance.jl")
 
 prompt = "Implement a LU based mixed precision algorithm to solve Ax = b in Julia."
