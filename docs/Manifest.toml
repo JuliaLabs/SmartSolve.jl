@@ -2,7 +2,7 @@
 
 julia_version = "1.12.1"
 manifest_format = "2.0"
-project_hash = "244a271be01d0015c89fa4cdab9eba1a8e76eae4"
+project_hash = "1e9ffa7d4739f7d125a5e2c66af8747a8effd889"
 
 [[deps.ANSIColoredPrinters]]
 git-tree-sha1 = "574baf8110975760d391c710b6341da1afa48d8c"
@@ -249,11 +249,6 @@ version = "0.7.0"
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 version = "1.11.0"
-
-[[deps.SmartSolve]]
-path = ".."
-uuid = "6f8d7c3f-164c-4c7e-90dd-a070be558e41"
-version = "1.0.0-DEV"
 
 [[deps.Sockets]]
 uuid = "6462fe0b-24de-5631-8697-dd941f90decc"
