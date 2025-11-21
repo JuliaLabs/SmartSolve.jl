@@ -1,5 +1,3 @@
-using LinearAlgebra, BenchmarkTools, CUDA, SparseArrays
-
 function benchmark_ms( myfunc, args...;kwargs...)
     elapsed=0.0
     best=100000
