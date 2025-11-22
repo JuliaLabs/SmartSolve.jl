@@ -1,4 +1,4 @@
-## Generate LU with iterative refinement
+# Generate LU with iterative refinement
 ```julia
 using SmartSolve
 

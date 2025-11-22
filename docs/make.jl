@@ -56,7 +56,10 @@ makedocs(
       pages = ["Home" => "index.md",
                "Install" => "install.md",
                #"Examples" => basic_examples,
-               "Simple example" => "simple_example.md",
+               "Simple examples" => ["Generate linear solver" => 
+                                     "gen_lin_solver.md",
+                                     "Benchmark & generate linear solver" => 
+                                     "benchmark_and_gen_lin_solver.md"],
                "Awards, Publications & Talks" => "publications.md",
                "API" => "api.md"],
       format = Documenter.HTML(;
