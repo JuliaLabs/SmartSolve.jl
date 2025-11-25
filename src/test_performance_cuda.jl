@@ -20,9 +20,9 @@ function benchmark_ms( myfunc, args...;kwargs...)
 end
 
 test_matrices = []
-push!(test_matrices, sprand(20000, 20000, 0.1))
-push!(test_matrices, sprand(20000, 20000, 0.1))
-push!(test_matrices, sprand(20000, 20000, 0.1))
+push!(test_matrices, sprand(10000, 10000, 0.1))
+push!(test_matrices, sprand(10000, 10000, 0.1))
+push!(test_matrices, sprand(10000, 10000, 0.1))
 
 cuda_test_matrices = CuArray.(test_matrices)
 

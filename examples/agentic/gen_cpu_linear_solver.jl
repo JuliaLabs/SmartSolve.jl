@@ -13,11 +13,12 @@ code, hist, conv = gen_linear_solver(prompt, secret_key)
 
 println("Generated Code:\n")
 println(code)
+write("generated_cpu_code.jl", code)
 
 println("Simple benchmark:\n")
 eval(Meta.parse(code))
-A = sprand(10000, 10000, 0.1)
-b = rand(10000)
+A = sprand(Float32, 10000, 10000, 0.1)
+b = rand(Float32, 10000)
 @benchmark $A \ $b
 @benchmark proposed_fn(A, b)
 
