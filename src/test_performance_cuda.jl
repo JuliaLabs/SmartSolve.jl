@@ -19,8 +19,6 @@ function benchmark_ms( myfunc, args...;kwargs...)
     return best
 end
 
-# test_matrix_names = ["Bai/af23560", "Engwirda/airfoil_2d", "vanHeukelum/cage10"]
-# test_matrices = matrixdepot.(test_matrix_names)
 test_matrices = []
 push!(test_matrices, sprand(20000, 20000, 0.1))
 push!(test_matrices, sprand(20000, 20000, 0.1))
