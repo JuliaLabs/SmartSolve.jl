@@ -90,3 +90,9 @@ end
 function gen_linear_solver_cuda(prompt, secret_key,checker_filename = src_dir *"/test_performance_cuda.jl", model = "gpt-5-mini"; max_iters = 3)
     return generate_default_code(prompt, secret_key, checker_filename, model, ls_cuda_dev_prompt_maker; max_iters = max_iters)
 end
+
+function printhist(hist)
+    for (i, (role, message)) in enumerate(hist)
+            println("Message $i $(role[2]):\n$(message[2])\n")
+    end
+end

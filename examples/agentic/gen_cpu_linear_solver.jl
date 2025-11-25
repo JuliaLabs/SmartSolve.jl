@@ -1,4 +1,5 @@
 using SmartSolve
+using LinearAlgebra
 using SparseArrays
 using BenchmarkTools
 
@@ -20,5 +21,5 @@ b = rand(10000)
 @benchmark $A \ $b
 @benchmark proposed_fn(A, b)
 
-
-
+println("\nConversation History:\n")
+printhist(hist)
