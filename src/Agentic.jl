@@ -83,11 +83,11 @@ end
 
 src_dir = @__DIR__
 
-function gen_linear_solver(prompt, secret_key, checker_filename = src_dir * "/test_performance.jl", model = "gpt-5-mini"; max_iters = 3)
+function gen_linear_solver(prompt, secret_key, checker_filename = src_dir * "/test_performance.jl", model = "gpt-5-mini"; max_iters = 10)
     return generate_default_code(prompt, secret_key, checker_filename, model, ls_dev_prompt_maker; max_iters = max_iters)
 end
 
-function gen_linear_solver_cuda(prompt, secret_key,checker_filename = src_dir *"/test_performance_cuda.jl", model = "gpt-5-mini"; max_iters = 3)
+function gen_linear_solver_cuda(prompt, secret_key,checker_filename = src_dir *"/test_performance_cuda.jl", model = "gpt-5-mini"; max_iters = 10)
     return generate_default_code(prompt, secret_key, checker_filename, model, ls_cuda_dev_prompt_maker; max_iters = max_iters)
 end
 
