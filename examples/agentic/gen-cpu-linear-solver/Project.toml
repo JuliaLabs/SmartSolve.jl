@@ -4,4 +4,4 @@ SmartSolve = "4fbb3a3c-2fa1-4c19-8d57-bae8bc1e16ac"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [sources]
-SmartSolve = {path = "../../../"}
+SmartSolve = {path = "../../.."}
