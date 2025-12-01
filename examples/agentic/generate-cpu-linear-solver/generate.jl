@@ -13,5 +13,5 @@ secret_key = ENV["OPENAI_API_KEY"]
 solver, hist, conv = gen_linear_solver(prompt, secret_key, max_iters = 5)
 
 println("Generated Code:\n")
-println(code)
+println(solver)
 write("solver.jl", solver)
