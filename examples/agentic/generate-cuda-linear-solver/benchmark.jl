@@ -10,7 +10,7 @@ println("GPU benchmark with error-vs-time plot:\n")
 include("solver.jl")
 
 # Configuration
-N = 10_000
+N = 15_000
 sparsity_levels = [0.1, 0.5, 0.9]
 solvers = OrderedDict(
     "Default" => (Ad, bd) -> (Ad \ bd),
@@ -86,7 +86,9 @@ p = plot(
     tickfontsize=20, #16,
     legendfontsize=18, #14,
     margin=5*Plots.mm,
-    framestyle=:box
+    framestyle=:box,
+    title="Random Matrices of Size $(N)x$(N),\n Varying Sparsity Levels (ρ) and\n GPU Solvers",
+    titlefontsize=22,
 )
 
 # Symbols encode sparsity levels; colors encode solvers.
