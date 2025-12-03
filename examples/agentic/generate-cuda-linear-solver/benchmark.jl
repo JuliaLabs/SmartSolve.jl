@@ -57,7 +57,7 @@ for sparsity in sparsity_levels
                 CUDA.synchronize()
             end seconds = 5 samples = 10
             
-            time_ms = median(bench.times) / 1e6  # Convert to ms
+            time_ms = median(bench.times) / 1e9  # Convert to s
             
             # Compute error
             bd_err = CuArray(copy(b))
@@ -78,7 +78,7 @@ p = plot(
     size=(800, 800),
     #legend=:topright,
     legend=:bottomright,
-    xlabel="Time (ms)",
+    xlabel="Time (s)",
     ylabel="Relative residual: ||Ax - b||₂ / ||b||₂",
  #   xscale=:log10,
     yscale=:log10,
