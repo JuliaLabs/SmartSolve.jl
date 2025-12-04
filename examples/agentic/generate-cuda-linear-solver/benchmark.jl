@@ -66,7 +66,7 @@ for sparsity in sparsity_levels
             error = norm(Ad*x_sol - bd_err) / norm(bd_err)
             
             results[sparsity][solver_name] = (time=time_ms, error=error)
-            println("    Time: $(round(time_ms, digits=3)) ms, Error: $(round(error, sigdigits=3))")
+            println("    Time: $(round(time_ms, digits=3)) s, Error: $(round(error, sigdigits=3))")
         catch e
             println("    Error during benchmark: $e")
         end

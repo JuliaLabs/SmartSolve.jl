@@ -12,8 +12,14 @@ include("solver.jl")
 # Configuration
 N = 15_000
 sparsity_levels = [0.1, 0.5, 0.9]
+
+umfpack_control = SparseArrays.UMFPACK.get_umfpack_control(Float64, Int64) # read Julia default configuration for a Float64 sparse matrix
+#SparseArrays.UMFPACK.show_umf_ctrl(umfpack_control) # optional - display values
+umfpack_control[SparseArrays.UMFPACK.JL_UMFPACK_IRSTEP] = 2.0 # reenable iterative refinement (2 is UMFPACK default max iterative refinement steps)
+
 solvers = OrderedDict(
     "Default" => (A, b) -> (A \ b),
+    "UMFPACK" => (A, b) -> lu(A; control = umfpack_control) \ b,
     "Generated" => (A, b) -> proposed_fn(A, b)
 )
 
@@ -56,7 +62,7 @@ for sparsity in sparsity_levels
             error = norm(A*x_sol - b_err) / norm(b_err)
             
             results[sparsity][solver_name] = (time=time_ms, error=error)
-            println("    Time: $(round(time_ms, digits=3)) ms, Error: $(round(error, sigdigits=3))")
+            println("    Time: $(round(time_ms, digits=3)) s, Error: $(round(error, sigdigits=3))")
         catch e
             println("    Error during benchmark: $e")
         end
@@ -67,7 +73,7 @@ end
 p = plot(
     size=(800, 800),
     #legend=:topright,
-    legend=:bottomright,
+    legend=:bottomleft,
     xlabel="Time (s)",
     ylabel="Relative residual: ||Ax - b||₂ / ||b||₂",
  #   xscale=:log10,
@@ -86,7 +92,7 @@ p = plot(
 ## Sparsity shapes
 marker_map_sparsity = OrderedDict(0.1=>:circle, 0.5=>:square, 0.9=>:utriangle)
 ## Solver color shades
-color_map_solver = OrderedDict("Default"=>:red, "Generated"=>:green)
+color_map_solver = OrderedDict("Default"=>:red, "UMFPACK"=>:blue, "Generated"=>:green)
 
 # Plot each point individually so marker shape shows sparsity and color shows solver.
 for solver_name in keys(solvers)

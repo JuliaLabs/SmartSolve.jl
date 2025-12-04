@@ -3,7 +3,7 @@ function proposed_fn(A::SparseMatrixCSC, b::AbstractVector)
     n = length(b)
     @assert size(A,2) == n "Dimensions of A and b must agree"
 
-    niters = 10
+    niters = 4
 
     # Convert sparse matrix to dense double for accurate residual computation
     # and to dense single for fast factorization/solves with multithreaded BLAS.
