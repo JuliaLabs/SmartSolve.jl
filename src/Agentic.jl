@@ -20,7 +20,9 @@ function error_prompt_maker(err_message)
 end
 
 proposed_fn(x) = x
-function generate_default_code(prompt, secret_key, checker_filename, model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker; max_iters = 3)
+evaluator(x) = (true, "")
+function generate_default_code(prompt, secret_key, checker_filename;
+                              model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker, max_iters = 3)
     """
         - checker_fn: proposed_fn -> check : Bool, performance_description : String
     """
@@ -81,18 +83,64 @@ function ls_cuda_dev_prompt_maker(fn_str)
             " Assume that LinearAlgebra and SparseArrays is already imported."
 end
 
-src_dir = @__DIR__
-
-function gen_linear_solver(prompt, secret_key, checker_filename = src_dir * "/test_performance.jl", model = "gpt-5-mini"; max_iters = 10)
-    return generate_default_code(prompt, secret_key, checker_filename, model, ls_dev_prompt_maker; max_iters = max_iters)
+function ls_dagger_dev_prompt_maker(fn_str)
+    return "You are a numerical linear algebra expert, and an expert Julia programmer. You are very experienced in GPU programming using CUDA." * 
+            " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
+            " Make sure the code you produce uses Dagger." *
+            " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
+            " Assume that LinearAlgebra and SparseArrays is already imported." *
+            " Assume that Dagger is already imported." *
+            " Use the following Dagger.jl documentation: https://juliaparallel.org/Dagger.jl/dev/" *
+            " Use the following Dagger.jl implementation of Cholesky as an example: https://github.com/JuliaParallel/Dagger.jl/blob/67211816781d59109d74940550ca2d80af96b13d/src/array/cholesky.jl"
 end
 
-function gen_linear_solver_cuda(prompt, secret_key,checker_filename = src_dir *"/test_performance_cuda.jl", model = "gpt-5-mini"; max_iters = 10)
-    return generate_default_code(prompt, secret_key, checker_filename, model, ls_cuda_dev_prompt_maker; max_iters = max_iters)
+src_dir = @__DIR__
+
+function gen_linear_solver(prompt, secret_key;
+                          checker_filename = src_dir * "/test_performance.jl",
+                          model = "gpt-5-mini",
+                          max_iters = 10)
+    return generate_default_code(prompt, secret_key, checker_filename;
+                                model = model,
+                                dev_prompt_fn=ls_dev_prompt_maker,
+                                max_iters = max_iters)
+end
+
+function gen_linear_solver_cuda(prompt, secret_key;
+                                checker_filename = src_dir *"/test_performance_cuda.jl",
+                                model = "gpt-5-mini",
+                                max_iters = 10)
+    return generate_default_code(prompt, secret_key, checker_filename;
+                                 model=model,
+                                 dev_prompt_fn=ls_cuda_dev_prompt_maker,
+                                 max_iters = max_iters)
+end
+
+function gen_linear_solver_dagger(prompt, secret_key;
+                                  checker_filename = src_dir *"/test_performance_dagger.jl",
+                                  model = "gpt-5-mini",
+                                  max_iters = 10)
+    return generate_default_code(prompt, secret_key, checker_filename;
+                                 model=model,
+                                 dev_prompt_fn=ls_dagger_dev_prompt_maker,
+                                 max_iters = max_iters)
 end
 
 function printhist(hist)
     for (i, (role, message)) in enumerate(hist)
             println("Message $i $(role[2]):\n$(message[2])\n")
     end
+end
+
+function get_report(m_err, m_runtime, m_alloc,
+                    err_threshold, runtime_threshold, alloc_threshold)
+    report = """
+    Median error ratio (error_default / error_gen): $(m_err)
+    Desired median error ratio: >= $err_threshold
+    Median runtime ratio or speedup (runtime_default / runtime_gen): $(m_runtime)
+    Desired median runtime ratio: >= $runtime_threshold
+    Allocation median ratio (alloc_default / alloc_gen): $(m_alloc)
+    Desired median allocation ratio: >= $alloc_threshold
+    """
+    return report
 end

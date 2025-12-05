@@ -4,19 +4,6 @@ push!(test_matrices, sprand(N, N, 0.1))
 push!(test_matrices, sprand(N, N, 0.2))
 push!(test_matrices, sprand(N, N, 0.3))
 
-function get_report(m_err, m_runtime, m_alloc,
-                    err_threshold, runtime_threshold, alloc_threshold)
-    report = """
-    Median error ratio (error_default / error_gen): $(m_err)
-    Desired median error ratio: >= $err_threshold
-    Median Runtime ratio or speedup (runtime_default / runtime_gen): $(m_runtime)
-    Desired median runtime ratio: >= $runtime_threshold
-    Allocation median ratio (alloc_default / alloc_gen): $(m_alloc)
-    Desired median allocation ratio: >= $alloc_threshold
-    """
-    return report
-end
-
 function evaluator(proposed_fn, err_threshold=1.0,
                                 runtime_threshold=1.1,
                                 alloc_threshold=0.0)
