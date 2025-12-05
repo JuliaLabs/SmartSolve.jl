@@ -1,35 +1,50 @@
-# test_matrix_names = ["Bai/af23560", "Engwirda/airfoil_2d", "vanHeukelum/cage10"]
-# test_matrices = matrixdepot.(test_matrix_names)
 test_matrices = []
-push!(test_matrices, sprand(10000, 10000, 0.1))
-push!(test_matrices, sprand(10000, 10000, 0.1))
-push!(test_matrices, sprand(10000, 10000, 0.1))
+N = 5000
+push!(test_matrices, sprand(N, N, 0.1))
+push!(test_matrices, sprand(N, N, 0.2))
+push!(test_matrices, sprand(N, N, 0.3))
 
-base_prompt(rel_errs, speedups, alloc_ratios) = "Here are the errors compared to built-in linear solver: 
-$(rel_errs)
-and here are the speed-up ratio compared to built-in solver:
-$(speedups).
-the ratio of allocations (base_alloc/proposed_alloc) is:
-$(alloc_ratios)."
+function get_report(m_err, m_runtime, m_alloc,
+                    err_threshold, runtime_threshold, alloc_threshold)
+    report = """
+    Median error ratio (error_default / error_gen): $(m_err)
+    Desired median error ratio: >= $err_threshold
+    Median Runtime ratio or speedup (runtime_default / runtime_gen): $(m_runtime)
+    Desired median runtime ratio: >= $runtime_threshold
+    Allocation median ratio (alloc_default / alloc_gen): $(m_alloc)
+    Desired median allocation ratio: >= $alloc_threshold
+    """
+    return report
+end
 
-function evaluator(proposed_fn, tol = 1e-6)
-    rel_errors = Float64[]
-    speedups = Float64[]
+function evaluator(proposed_fn, err_threshold=1.0,
+                                runtime_threshold=1.1,
+                                alloc_threshold=0.0)
+    error_ratios = Float64[]
+    runtime_ratios = Float64[]
     alloc_ratios = Float64[]
     for A in test_matrices
         b = randn(size(A,2))
-        x_exact = A \ b
-        x_alg = Base.invokelatest(proposed_fn, A, b)
+        x_default = A \ b
+        x_gen = Base.invokelatest(proposed_fn, A, b)
 
-        push!(rel_errors, norm(x_alg - x_exact)/norm(x_exact))
-        base_runtime = @btimed $A \ $b
-        alg_runtime = @btimed $Base.invokelatest($proposed_fn, $A, $b)
-        push!(speedups, base_runtime.time/alg_runtime.time)
-
-        base_alloc = @ballocated $A \ $b
-        alg_alloc = @ballocated $Base.invokelatest($proposed_fn, $A, $b)
-        push!(alloc_ratios, base_alloc/ alg_alloc)
-        # println("done")
+        err_default = norm(A * x_default - b)
+        err_gen = norm(A * x_gen - b)
+        push!(error_ratios, err_default/err_gen)
+        
+        b_default = @benchmark $A \ $b
+        b_gen = @benchmark $Base.invokelatest($proposed_fn, $A, $b)
+        push!(runtime_ratios, median(b_default.times)/median(b_gen.times))
+        push!(alloc_ratios, median(b_default.allocs)/median(b_gen.allocs))
     end
-    return mean(rel_errors) < tol && mean(speedups) > 1.1, base_prompt(rel_errors, speedups, alloc_ratios)
-end 
+    m_err = median(error_ratios)
+    m_runtime = median(runtime_ratios)
+    m_alloc = median(alloc_ratios)
+    report = get_report(m_err, m_runtime, m_alloc, err_threshold,
+                        runtime_threshold, alloc_threshold)
+    println(report)
+    return m_err     >= err_threshold &&     # 1.0 means no worse error
+           m_runtime >= runtime_threshold && # 1.1 means at least 10% faster
+           m_alloc   >= m_alloc,             # 0.0 means no allocation requirement
+           report
+end

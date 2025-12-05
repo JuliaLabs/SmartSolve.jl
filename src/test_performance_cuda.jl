@@ -1,64 +1,76 @@
-function benchmark_ms( myfunc, args...;kwargs...)
-    elapsed=0.0
-    best=100000
-    i=0
-    numruns = 20
-    while(elapsed<200.0 || i<2)
-        CUDA.synchronize()
-        start = time_ns()
-        for i=1:numruns
-            myfunc(args...;kwargs...)
-            CUDA.synchronize()
-        end
-        endtime = time_ns()
-        thisduration=(endtime-start)/1e6
-        elapsed += thisduration
-        best = min(thisduration/numruns,best)
-        i+=1
-    end
-    return best
+test_matrices = []
+N = 10_000
+push!(test_matrices, sprand(N, N, 0.1))
+push!(test_matrices, sprand(N, N, 0.2))
+push!(test_matrices, sprand(N, N, 0.3))
+
+function get_report(m_err, m_runtime, m_alloc,
+                    err_threshold, runtime_threshold, alloc_threshold)
+    report = """
+    Median error ratio (error_default / error_gen): $(m_err)
+    Desired median error ratio: >= $err_threshold
+    Median runtime ratio or speedup (runtime_default / runtime_gen): $(m_runtime)
+    Desired median runtime ratio: >= $runtime_threshold
+    Allocation median ratio (alloc_default / alloc_gen): $(m_alloc)
+    Desired median allocation ratio: >= $alloc_threshold
+    """
+    return report
 end
 
-# test_matrix_names = ["Bai/af23560", "Engwirda/airfoil_2d", "vanHeukelum/cage10"]
-# test_matrices = matrixdepot.(test_matrix_names)
-test_matrices = []
-push!(test_matrices, sprand(20000, 20000, 0.1))
-push!(test_matrices, sprand(20000, 20000, 0.1))
-push!(test_matrices, sprand(20000, 20000, 0.1))
+function evaluator_cuda(proposed_fn;
+                        err_threshold::Float64 = 1.0,
+                        runtime_threshold::Float64 = 1.1,
+                        alloc_threshold::Float64 = 0.0)
 
-cuda_test_matrices = CuArray.(test_matrices)
+    error_ratios  = Float64[]
+    runtime_ratios = Float64[]
+    alloc_ratios   = Float64[]
 
+    for A_cpu in test_matrices
+        # right-hand side on CPU
+        b_cpu = randn(size(A_cpu, 2))
 
-base_prompt(rel_errs, speedups) = "Here are the errors compared to built-in linear solver: 
-$(rel_errs)
-and here are the speed-up ratio compared to built-in solver:
-$(speedups)."
-function evaluator(proposed_fn, tol = 1e-6)
-    rel_errors = Float64[]
-    speedups = Float64[]
-    for A in cuda_test_matrices
-        b = CUDA.randn(Float64, size(A,2))
-        
-        x_exact = A \ b
-        alg_solver(A, b) = Base.invokelatest(proposed_fn, A, b)
+        # move to GPU; here we use a dense GPU matrix
+        # If you have a sparse GPU solver, you can switch to CuSparseMatrixCSR(A_cpu)
+        A_d = cu(Matrix(A_cpu))
+        b_d = cu(b_cpu)
 
-        x_alg = alg_solver(A, b)
-        
+        # --- Solve once to ensure kernels are compiled (warm-up) ---
+        x_default = A_d \ b_d
+        x_gen     = Base.invokelatest(proposed_fn, A_d, b_d)
+        CUDA.synchronize()
 
-        push!(rel_errors, norm(x_alg - x_exact)/norm(x_exact))
+        # --- Error ratios (all on GPU, scalars on CPU) ---
+        err_default = norm(A_d * x_default - b_d)
+        err_gen     = norm(A_d * x_gen     - b_d)
+        push!(error_ratios, err_default / err_gen)
 
-        benchmark_ms(\, A, b)
-        base_runtime = benchmark_ms(\, A, b)
+        # --- Runtime ratios (GPU) ---
+        b_default = @benchmark begin
+            x = $A_d \ $b_d
+            CUDA.synchronize()
+        end
 
+        b_gen = @benchmark begin
+            x = Base.invokelatest($proposed_fn, $A_d, $b_d)
+            CUDA.synchronize()
+        end
 
-        benchmark_ms(alg_solver, A, b)
-
-
-        alg_runtime = benchmark_ms(alg_solver, A, b)
-        push!(speedups, base_runtime/alg_runtime)
-
-
-        # println("done")
+        push!(runtime_ratios, median(b_default.times) / median(b_gen.times))
+        push!(alloc_ratios,   median(b_default.allocs) / median(b_gen.allocs))
     end
-    return mean(rel_errors) < tol && mean(speedups) > 1.1, base_prompt(rel_errors, speedups)
-end 
+
+    m_err     = median(error_ratios)
+    m_runtime = median(runtime_ratios)
+    m_alloc   = median(alloc_ratios)
+
+    report = get_report(m_err, m_runtime, m_alloc,
+                        err_threshold, runtime_threshold, alloc_threshold)
+    println(report)
+
+    ok = (m_err     >= err_threshold)      &&  # 1.0 => no worse error
+         (m_runtime >= runtime_threshold)  &&  # 1.1 => at least 10% faster
+         (m_alloc   >= alloc_threshold)        # 0.0 => no alloc requirement
+
+    return ok, report
+end

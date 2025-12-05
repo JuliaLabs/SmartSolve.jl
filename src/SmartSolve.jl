@@ -22,6 +22,6 @@ include("Agentic.jl")
 include("test_performance.jl")
 # include("test_performance_cuda.jl")
 
-export generate_default_code, generate_linear_solver_code
+export generate_default_code, gen_linear_solver, gen_linear_solver_cuda, printhist
 
 end # module SmartSolve
