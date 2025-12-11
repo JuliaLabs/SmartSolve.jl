@@ -18,9 +18,9 @@ umfpack_control = SparseArrays.UMFPACK.get_umfpack_control(Float64, Int64) # rea
 umfpack_control[SparseArrays.UMFPACK.JL_UMFPACK_IRSTEP] = 2.0 # reenable iterative refinement (2 is UMFPACK default max iterative refinement steps)
 
 solvers = OrderedDict(
-    "Default" => (A, b) -> (A \ b),
-    "UMFPACK" => (A, b) -> lu(A; control = umfpack_control) \ b,
-    "Generated" => (A, b) -> proposed_fn(A, b)
+    "UMFPACK (Baseline Direct Solve)" => (A, b) -> (A \ b),
+    "UMFPACK + Iterative Refinement" => (A, b) -> lu(A; control = umfpack_control) \ b,
+    "SmartSolve-Generated Solver" => (A, b) -> proposed_fn(A, b)
 )
 
 # Store results for plotting
@@ -52,7 +52,7 @@ for sparsity in sparsity_levels
         try
             bench = @benchmark begin
                 x = $(solver_fn)($A, $b_bench)
-            end seconds = 5 samples = 10
+            end
             
             time_ms = median(bench.times) / 1e9  # Convert to s
             
@@ -67,20 +67,22 @@ for sparsity in sparsity_levels
             println("    Error during benchmark: $e")
         end
     end
+
+    GC.gc()
 end
 
 # Create error-vs-time plot
 p = plot(
     size=(800, 800),
     #legend=:topright,
-    legend=:bottomleft,
+    legend=:topleft,
     xlabel="Time (s)",
     ylabel="Relative residual: ||Ax - b||₂ / ||b||₂",
  #   xscale=:log10,
     yscale=:log10,
     guidefontsize=22,#18,
     tickfontsize=20, #16,
-    legendfontsize=18, #14,
+    legendfontsize=14, #14,
     margin=5*Plots.mm,
     framestyle=:box,
     title="Random Matrices of Size $(N)x$(N),\n Varying Sparsity Levels (ρ) and\n CPU Solvers",
@@ -92,10 +94,10 @@ p = plot(
 ## Sparsity shapes
 marker_map_sparsity = OrderedDict(0.1=>:circle, 0.5=>:square, 0.9=>:utriangle)
 ## Solver color shades
-color_map_solver = OrderedDict("Default"=>:red, "UMFPACK"=>:blue, "Generated"=>:green)
+colors = [:red, :blue, :green]
 
 # Plot each point individually so marker shape shows sparsity and color shows solver.
-for solver_name in keys(solvers)
+for (i, solver_name) in enumerate(keys(solvers))
     for sparsity in sparsity_levels
         if sparsity in keys(results) && solver_name in keys(results[sparsity])
             t = results[sparsity][solver_name].time
@@ -104,7 +106,7 @@ for solver_name in keys(solvers)
                      label="",
                      marker=marker_map_sparsity[sparsity],
                      markersize=15,
-                     color=color_map_solver[solver_name],
+                     color=colors[i],
                      markerstrokecolor=:black,
                      markerstrokewidth=0.0,#0.8,
                      alpha=0.45)
@@ -113,13 +115,13 @@ for solver_name in keys(solvers)
 end
 
 # Create a combined legend
-for solver_name in keys(solvers)
+for (i, solver_name) in enumerate(keys(solvers))
     for s in sparsity_levels
         lbl = "$(solver_name), ρ:$(s)"
         scatter!(p, [NaN], [NaN]; label=lbl,
                  marker=marker_map_sparsity[s],
                  markersize=15,
-                 color=color_map_solver[solver_name],
+                 color=colors[i],
                  markerstrokecolor=:black,
                  markerstrokewidth=0.0, 
                  alpha=0.45)
