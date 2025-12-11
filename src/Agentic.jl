@@ -22,7 +22,9 @@ end
 proposed_fn(x) = x
 evaluator(x) = (true, "")
 function generate_default_code(prompt, secret_key, checker_filename;
-                              model = "gpt-5-mini", dev_prompt_fn = dev_prompt_maker, max_iters = 3)
+                               model = "gpt-5-mini",
+                               dev_prompt_fn = dev_prompt_maker,
+                               max_iters = 3)
     """
         - checker_fn: proposed_fn -> check : Bool, performance_description : String
     """
@@ -42,6 +44,8 @@ function generate_default_code(prompt, secret_key, checker_filename;
         
         println("Iteration $iters")
 
+        println("Code:\n $gen_code")
+
         # println(gen_code)
         push!(chat_history, Dict("role" => "assistant", "content" => gen_code)) 
         try
@@ -53,7 +57,7 @@ function generate_default_code(prompt, secret_key, checker_filename;
 
             next_prompt = description_prompt_maker(check, performance_description)
             push!(chat_history, Dict("role" => "user", "content" => next_prompt))
-            converged = ~(iters == max_iters)
+            converevlged = ~(iters == max_iters)
             check && break
         catch e
             error_msg = sprint(showerror, e)
@@ -61,6 +65,7 @@ function generate_default_code(prompt, secret_key, checker_filename;
            
             next_prompt = error_prompt_maker(error_msg * "\n" * st)
             push!(chat_history, Dict("role" => "user", "content" => next_prompt))
+            println("error: $error_msg\n$st")
         end
         converged = ~(iters == max_iters)
     end
@@ -84,14 +89,13 @@ function ls_cuda_dev_prompt_maker(fn_str)
 end
 
 function ls_dagger_dev_prompt_maker(fn_str)
-    return "You are a numerical linear algebra expert, and an expert Julia programmer. You are very experienced in GPU programming using CUDA." * 
+    return  "You are a numerical linear algebra expert, and an expert Julia programmer. You are very experienced in GPU programming using Dagger.jl" * 
             " The user will ask you to generate a function and use the following code the check if your solution is accurate and fast." * 
             " Make sure the code you produce uses Dagger." *
             " Here is the code: \n" * fn_str * "\nOnly return the function. Make sure the function name is proposed_fn. Do not return extra text." *
             " Assume that LinearAlgebra and SparseArrays is already imported." *
             " Assume that Dagger is already imported." *
-            " Use the following Dagger.jl documentation: https://juliaparallel.org/Dagger.jl/dev/" *
-            " Use the following Dagger.jl implementation of Cholesky as an example: https://github.com/JuliaParallel/Dagger.jl/blob/67211816781d59109d74940550ca2d80af96b13d/src/array/cholesky.jl"
+            " Use the following Dagger.jl documentation: https://juliaparallel.org/Dagger.jl/dev/"
 end
 
 src_dir = @__DIR__

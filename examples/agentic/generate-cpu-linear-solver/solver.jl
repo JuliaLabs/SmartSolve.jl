@@ -1,65 +1,44 @@
-function proposed_fn(A::SparseMatrixCSC, b::AbstractVector)
-    @assert size(A,1) == size(A,2) "A must be square"
-    n = length(b)
-    @assert size(A,2) == n "Dimensions of A and b must agree"
+function proposed_fn(A, b)
+    # Cache Float32 factorizations and work buffers per matrix identity
+    if !isdefined(@__MODULE__, :LU32_CACHE)
+        global LU32_CACHE = IdDict{UInt64, Tuple{Any, Vector{Float64}, Vector{Float32}, Vector{Float32}}}()
+    end
 
-    niters = 4
+    # Ensure b as Float64 vector (avoid copy if already Float64)
+    b64 = eltype(b) === Float64 ? b : Vector{Float64}(b)
+    n = length(b64)
 
-    # Convert sparse matrix to dense double for accurate residual computation
-    # and to dense single for fast factorization/solves with multithreaded BLAS.
-    Ad64 = Array(A)                    # dense Float64
-    Ad32 = Array{Float32}(undef, n, n)
-    @inbounds for j in 1:n
-        for i in 1:n
-            Ad32[i,j] = Float32(Ad64[i,j])
+    key = objectid(A)
+    F32, r64, work32, bf32 = get!(LU32_CACHE, key) do
+        # Build a single-precision copy of the numeric values (structure reuse)
+        nz32 = Float32.(A.nzval)
+        Af = SparseMatrixCSC{Float32, Int}(size(A,1), size(A,2),
+                                           copy(A.colptr), copy(A.rowval),
+                                           nz32)
+        F32_local = lu(Af)                           # single-precision sparse LU
+        r64_local = Vector{Float64}(undef, n)       # residual buffer (double)
+        work32_local = Vector{Float32}(undef, n)    # temp residual in single
+        bf32_local = Vector{Float32}(undef, n)      # temp right-hand side in single
+        return (F32_local, r64_local, work32_local, bf32_local)
+    end
+
+    # Initial solve in single precision, accumulate in double
+    @inbounds for i = 1:n
+        bf32[i] = Float32(b64[i])
+    end
+    xf32 = F32 \ bf32
+    x = Float64.(xf32)
+
+    # Iterative refinement: compute residual in double, solve correction in single, update double solution
+    for _ = 1:5
+        mul!(r64, A, x)                       # r64 = A * x (double)
+        @inbounds for i = 1:n
+            r64[i] = b64[i] - r64[i]          # r64 = b - A*x
+            work32[i] = Float32(r64[i])       # convert residual to single
         end
-    end
-
-    # Convert rhs to Float32 once
-    b32 = Vector{Float32}(undef, n)
-    @inbounds @simd for i in 1:n
-        b32[i] = Float32(b[i])
-    end
-
-    # Factorize dense single-precision matrix (uses LAPACK/BLAS and is multithreaded)
-    F32 = lu(Ad32)
-
-    # Initial solve in single precision, in-place if possible
-    x32 = copy(b32)
-    try
-        LinearAlgebra.ldiv!(F32, x32)   # in-place: x32 <- Ad32 \ b32
-    catch
-        x32 = F32 \ b32                 # fallback
-    end
-
-    # Promote to double precision for accumulation and residual computation
-    x = Vector{Float64}(undef, n)
-    @inbounds @simd for i in 1:n
-        x[i] = Float64(x32[i])
-    end
-
-    # Preallocate working vectors
-    r = similar(b)                     # Float64 residual
-    r32 = Vector{Float32}(undef, n)    # single-precision correction (in-place)
-
-    for iter in 1:niters
-        # r = b - Ad64 * x   (use BLAS for dense matvec)
-        mul!(r, Ad64, x)              # r = Ad64 * x
-        @inbounds @simd for i in 1:n
-            r[i] = b[i] - r[i]
-            r32[i] = Float32(r[i])
-        end
-
-        # Solve correction in single precision using the LU factorization
-        try
-            LinearAlgebra.ldiv!(F32, r32)   # r32 <- Ad32 \ r32 (in-place)
-        catch
-            r32 = F32 \ r32                 # fallback
-        end
-
-        # Update double-precision solution
-        @inbounds @simd for i in 1:n
-            x[i] += Float64(r32[i])
+        d32 = F32 \ work32
+        @inbounds for i = 1:n
+            x[i] += Float64(d32[i])           # update solution in double
         end
     end
 
