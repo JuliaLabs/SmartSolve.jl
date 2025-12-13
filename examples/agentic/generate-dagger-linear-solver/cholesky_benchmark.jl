@@ -66,10 +66,13 @@ end #  1.046506 seconds (88.80 k allocations: 4.146 MiB, 7.74% gc time, 18 lock 
 # end samples = 1
 
 # Relative error
-e_d = norm(A_d*x_d - b_d)/norm(b_d)
+e_d = Dagger.with_options(scope=Dagger.scope(;cuda_gpu=1)) do
+    norm(A_d*x_d - b_d)/norm(b_d)
+end
 
 # Free memory
 A_d = nothing
 b_d = nothing
+x_d = nothing
 GC.gc()
 
