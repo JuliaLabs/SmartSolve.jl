@@ -46,9 +46,6 @@ end
 
 # Warm-up
 x_d = Dagger.with_options(scope=Dagger.scope(;cuda_gpu=1)) do
-    cholesky(A_d)
-end
-Dagger.with_options(scope=Dagger.scope(;cuda_gpu=1)) do
     cholesky(A_d) \ b_d
 end
 
