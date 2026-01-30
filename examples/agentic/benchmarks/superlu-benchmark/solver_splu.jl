@@ -1,4 +1,4 @@
-include("LinearSolveSLUIRExt_sparse.jl")
+include("LinearSolveSLUIRExt_splu.jl")
 
 
 function proposed_fn(A, b; iters = 5)
