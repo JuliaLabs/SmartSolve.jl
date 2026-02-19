@@ -135,7 +135,7 @@ for (i, solver_name) in enumerate(keys(solvers))
                  alpha=0.45)
     end
 end
-plot_name = "error_vs_time_banded_2.pdf"
+plot_name = "error_vs_time_banded_3.pdf"
 savefig(p, plot_name)
 println("\n✓ Plot saved as $plot_name")
 

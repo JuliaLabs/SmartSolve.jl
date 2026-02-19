@@ -10,15 +10,6 @@ struct SLUIRFactorization <: LinearSolve.SciMLLinearSolveAlgorithm
 end
 
 const lwp = Float32
-const BlasInt = LinearAlgebra.BlasInt
-
-struct GBFactor{T}
-    AB::Matrix{T}
-    ipiv::Vector{BlasInt}
-    n::Int
-    kl::Int
-    ku::Int
-end
 
 mutable struct SLUIRCache{T}
     n::Int
@@ -35,29 +26,26 @@ function LinearSolve.init_cacheval(
     return SLUIRCache{lwp}(0, Float64[], lwp[], lwp[], Float64[], nothing)
 end
 
-@inline function gb_pack_and_factor!(A::BandedMatrix, ::Type{T}) where {T}
-    n = size(A, 1)
-    kl, ku = bandwidths(A)
-    ldab = 2*kl + ku + 1
-
-    AB = zeros(T, ldab, n)
-    bd = BandedMatrices.bandeddata(A)  # (kl+ku+1)×n
-
-    # pack: copy bd into AB shifted down by kl rows
-    @inbounds for j in 1:n
-        for r in 1:(kl + ku + 1)
-            AB[kl + r, j] = T(bd[r, j])
-        end
+# Fast banded copy with eltype conversion (preserves bandwidths, avoids dense conversion)
+@inline function banded_convert(::Type{T}, A::BandedMatrix) where {T}
+    B = similar(A, T)
+    bdA = BandedMatrices.bandeddata(A)
+    bdB = BandedMatrices.bandeddata(B)
+    @inbounds for j in axes(bdA, 2), i in axes(bdA, 1)
+        bdB[i, j] = T(bdA[i, j])
     end
-
-    AB, ipiv = LAPACK.gbtrf!(kl, ku, n, AB)   # <-- ONLY TWO RETURNS on your Julia
-    return GBFactor{T}(AB, ipiv, n, kl, ku)
+    return B
 end
 
-@inline function gb_solve!(F, #::GBFactor{T}, 
-                            rhs::StridedVector{T}) where {T}
-    # LAPACK.gbtrs!('N', F.kl, F.ku, F.n, F.AB, F.ipiv, rhs)  # rhs := solution
-    ldiv!(F, rhs)
+# Factorize in low precision using BandedMatrices' LU
+@inline function banded_factor_lwp(A::BandedMatrix, ::Type{T}) where {T}
+    A_T = banded_convert(T, A)
+    return lu(A_T)  # banded LU factorization object
+end
+
+# Overwrite rhs with solution (low-precision triangular solves via factorization)
+@inline function gb_solve!(F, rhs::StridedVector{T}) where {T}
+    ldiv!(F, rhs)   # rhs := F \ rhs
     return rhs
 end
 
@@ -70,8 +58,9 @@ function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::SLUIRFactorizatio
         cache.cacheval.bflwp   = Vector{lwp}(undef, n)
         cache.cacheval.x       = Vector{Float64}(undef, n)
 
-        # cache.cacheval.Flwp = gb_pack_and_factor!(cache.A, lwp)  # cached gbtrf!
-        cache.cacheval.Flwp = lu(cache.A)  # BandedMatrices LU 
+        # Low-precision banded LU (Float32) cached once
+        cache.cacheval.Flwp = banded_factor_lwp(cache.A, lwp)
+
         cache.isfresh = false
     end
 
@@ -80,7 +69,7 @@ function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::SLUIRFactorizatio
     worklwp = cache.cacheval.worklwp
     bflwp   = cache.cacheval.bflwp
     x       = cache.cacheval.x
-    F       = cache.cacheval.Flwp # ::GBFactor{lwp}
+    F       = cache.cacheval.Flwp
 
     b = cache.b
 

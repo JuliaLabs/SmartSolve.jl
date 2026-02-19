@@ -28,6 +28,7 @@ This folder contains different benchmarks for Smartsolve solvers. Currently, the
 1. Repeat benchmarks at different CPUs, particularly in a cluster.
 2. Use matrices of $10^9$ to $10^{11}$ rows and columns and around $10^{11}$ to $10^{13}$ nonzero elements. Or possibly matrices from [real problems](https://sparse.tamu.edu/).
 3. Check implementations.
-4. Find other packages or methods to implement sparse (or banded) Float32 LU solvers.
-5. If 4. does not exists, implement one at a low level using SmartSolve.
-6. Find a way to add parallelization explicitly into the solver, rather than the backend solver.
+4. Implement the different sparse LU solvers into the non LinearSolve version of the algorithm, seen in the file basic-luir-benchmark/ex_solver.jl.
+5. Find other packages or methods to implement sparse (or banded) Float32 LU solvers.
+6. If 5. does not exists, implement one at a low level using SmartSolve.
+7. Find a way to add parallelization explicitly into the solver, rather than the backend solver.
