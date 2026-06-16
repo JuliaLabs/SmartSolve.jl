@@ -23,14 +23,15 @@ ScikitLearn = "3646fa90-6ef7-5e7e-9f22-8aca16db6324"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
-[sources]
-Dagger = {rev = "jps/lu-ldiv3", url = "https://github.com/JuliaParallel/Dagger.jl"}
+[sources.Dagger]
+rev = "jps/lu-ldiv3"
+url = "https://github.com/JuliaParallel/Dagger.jl"
 
 [compat]
 BSON = "0.3"
 BenchmarkTools = "1"
 CSV = "0.10"
-CUDA = "5.9.2"
+CUDA = "5.9.2, 6"
 CairoMakie = "0.15"
 Dagger = "0.19.2"
 DataFrames = "1"
